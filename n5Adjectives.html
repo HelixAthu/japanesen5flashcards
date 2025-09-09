@@ -1,0 +1,200 @@
+<script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function filledCell(cell) {
+          return cell !== '' && cell != null;
+        }
+        function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row => row.some(filledCell));
+
+                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
+                var headerRowIndex = filteredData.findIndex((row, index) =>
+                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+                );
+                // Fallback
+                if (headerRowIndex === -1 || headerRowIndex > 25) {
+                  headerRowIndex = 0;
+                }
+
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+        }
+        </script><!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>JLPT N5 Adjectives Flashcard App</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-900 flex items-center justify-center min-h-screen">
+  <div class="bg-gray-800 p-6 rounded-xl shadow-2xl w-full max-w-lg">
+    <h1 class="text-3xl font-bold text-center text-white mb-6">JLPT N5 Adjectives Flashcards</h1>
+    <div id="flashcard" class="bg-gray-700 p-6 rounded-lg text-center h-64 flex items-center justify-center cursor-pointer hover:bg-gray-600 transition-colors duration-200" onclick="flipCard()">
+      <p id="cardText" class="text-2xl font-semibold text-white"></p>
+    </div>
+    <div class="flex justify-between mt-6 gap-4">
+      <button id="prevBtn" class="bg-indigo-600 text-white px-6 py-3 rounded-lg hover:bg-indigo-700 transition-colors duration-200" onclick="prevCard()">Previous</button>
+      <button id="nextBtn" class="bg-indigo-600 text-white px-6 py-3 rounded-lg hover:bg-indigo-700 transition-colors duration-200" onclick="nextCard()">Next</button>
+    </div>
+    <div class="mt-6">
+      <input id="questionInput" class="w-full p-3 bg-gray-700 text-white border border-gray-600 rounded-lg mb-3 focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Enter adjective (hiragana)">
+      <input id="answerInput" class="w-full p-3 bg-gray-700 text-white border border-gray-600 rounded-lg mb-3 focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Enter English meaning">
+      <button id="addBtn" class="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition-colors duration-200 w-full" onclick="addCard()">Add Flashcard</button>
+    </div>
+  </div>
+
+  <script>
+    const flashcards = [
+      { question: "あぶない", answer: "dangerous" },
+      { question: "あかい", answer: "red; crimson; scarlet" },
+      { question: "あかるい", answer: "bright; light" },
+      { question: "あまい", answer: "sweet; sweet-tasting; sugary; naive; indulgent" },
+      { question: "あおい", answer: "blue; azure" },
+      { question: "あたらしい", answer: "new; novel; fresh; recent; latest" },
+      { question: "あたたかい", answer: "warm" },
+      { question: "あつい", answer: "hot; sultry; thick" },
+      { question: "べんり", answer: "convenient; handy; useful" },
+      { question: "ちいさい", answer: "small; little; tiny" },
+      { question: "ちかい", answer: "near; close" },
+      { question: "だいじょうぶ", answer: "OK; okay; alright; problem free" },
+      { question: "だいすき", answer: "love; like; like very much" },
+      { question: "ふるい", answer: "old (not used for people)" },
+      { question: "ふとい", answer: "fat; thick" },
+      { question: "げんき", answer: "lively; full of spirit; energetic; healthy" },
+      { question: "はやい", answer: "fast; quick; hasty; brisk; early" },
+      { question: "へた", answer: "unskillful; poor; awkward" },
+      { question: "ひくい", answer: "short; low" },
+      { question: "ひま", answer: "free time" },
+      { question: "ひろい", answer: "spacious; vast; wide" },
+      { question: "ほんとう", answer: "truth; reality; actuality; fact" },
+      { question: "ほしい", answer: "want" },
+      { question: "ほそい", answer: "thin; slender" },
+      { question: "いろいろ", answer: "various" },
+      { question: "いそがしい", answer: "busy" },
+      { question: "いたい", answer: "painful; sore" },
+      { question: "いや", answer: "unpleasant" },
+      { question: "じょうぶ", answer: "strong; durable" },
+      { question: "じょうず", answer: "skillful; skilled; proficient; good (at)" },
+      { question: "からい", answer: "spicy" },
+      { question: "かるい", answer: "light" },
+      { question: "かわいい", answer: "cute" },
+      { question: "けっこう", answer: "splendid; enough" },
+      { question: "きいろい", answer: "yellow" },
+      { question: "きらい", answer: "hate" },
+      { question: "きれい", answer: "pretty; lovely; beautiful" },
+      { question: "きたない", answer: "dirty" },
+      { question: "くらい", answer: "dark; gloomy; murky" },
+      { question: "くろい", answer: "black" },
+      { question: "まるい", answer: "round; circular" },
+      { question: "まっすぐ", answer: "straight ahead; direct" },
+      { question: "まずい", answer: "unpleasant" },
+      { question: "みじかい", answer: "short" },
+      { question: "むずかしい", answer: "difficult" },
+      { question: "ながい", answer: "long (distance); long (time); lengthy" },
+      { question: "にぎやか", answer: "bustling; busy" },
+      { question: "ぬるい", answer: "luke warm" },
+      { question: "おいしい", answer: "delicious" },
+      { question: "おもい", answer: "heavy" },
+      { question: "おもしろい", answer: "interesting" },
+      { question: "おおい", answer: "many; numerous; a lot; large quantity; frequent" },
+      { question: "おおきい", answer: "big; large; great; important" },
+      { question: "おそい", answer: "slow; time-consuming; late" },
+      { question: "りっぱ", answer: "splendid" },
+      { question: "さむい", answer: "cold" },
+      { question: "せまい", answer: "narrow" },
+      { question: "しろい", answer: "white" },
+      { question: "しずか", answer: "quiet" },
+      { question: "すき", answer: "like" },
+      { question: "すくない", answer: "few; a little; scarce; insufficient; seldom" },
+      { question: "すずしい", answer: "refreshing; cool" },
+      { question: "たぶん", answer: "perhaps; probably" },
+      { question: "たいへん", answer: "very; greatly; terribly; serious; difficult" },
+      { question: "たいせつ", answer: "important; necessary; indispensable; beloved" },
+      { question: "たかい", answer: "high; tall; expensive; above average" },
+      { question: "たくさん", answer: "many" },
+      { question: "たのしい", answer: "enjoyable; fun" },
+      { question: "とおい", answer: "far" },
+      { question: "つまらない", answer: "boring" },
+      { question: "つめたい", answer: "cold to the touch" },
+      { question: "つよい", answer: "powerful" },
+      { question: "うるさい", answer: "noisy; annoying" },
+      { question: "うすい", answer: "thin; weak" },
+      { question: "わかい", answer: "young" },
+      { question: "わるい", answer: "bad; poor; undesirable" },
+      { question: "やさしい", answer: "easy; simple" },
+      { question: "やすい", answer: "cheap; inexpensive" },
+      { question: "よい/いい", answer: "good" },
+      { question: "よわい", answer: "weak" },
+      { question: "ゆうめい", answer: "famous" }
+    ];
+    let currentCard = 0;
+    let isQuestion = true;
+
+    function displayCard() {
+      const cardText = document.getElementById('cardText');
+      if (flashcards.length === 0) {
+        cardText.textContent = "No flashcards available!";
+        return;
+      }
+      cardText.textContent = isQuestion ? flashcards[currentCard].question : flashcards[currentCard].answer;
+    }
+
+    function flipCard() {
+      if (flashcards.length === 0) return;
+      isQuestion = !isQuestion;
+      displayCard();
+    }
+
+    function nextCard() {
+      if (flashcards.length === 0) return;
+      currentCard = (currentCard + 1) % flashcards.length;
+      isQuestion = true;
+      displayCard();
+    }
+
+    function prevCard() {
+      if (flashcards.length === 0) return;
+      currentCard = (currentCard - 1 + flashcards.length) % flashcards.length;
+      isQuestion = true;
+      displayCard();
+    }
+
+    function addCard() {
+      const question = document.getElementById('questionInput').value.trim();
+      const answer = document.getElementById('answerInput').value.trim();
+      if (question && answer) {
+        flashcards.push({ question, answer });
+        document.getElementById('questionInput').value = '';
+        document.getElementById('answerInput').value = '';
+        if (flashcards.length === 1) {
+          currentCard = 0;
+          isQuestion = true;
+          displayCard();
+        }
+      }
+    }
+
+    // Initialize the first card
+    displayCard();
+  </script>
+</body>
+</html>

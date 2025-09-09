@@ -1,0 +1,215 @@
+<script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function filledCell(cell) {
+          return cell !== '' && cell != null;
+        }
+        function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row => row.some(filledCell));
+
+                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
+                var headerRowIndex = filteredData.findIndex((row, index) =>
+                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+                );
+                // Fallback
+                if (headerRowIndex === -1 || headerRowIndex > 25) {
+                  headerRowIndex = 0;
+                }
+
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+        }
+        </script><!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>JLPT N5 Verbs Flashcard App</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-900 flex items-center justify-center min-h-screen">
+  <div class="bg-gray-800 p-6 rounded-xl shadow-2xl w-full max-w-lg">
+    <h1 class="text-3xl font-bold text-center text-white mb-6">JLPT N5 Verbs Flashcards</h1>
+    <div id="flashcard" class="bg-gray-700 p-6 rounded-lg text-center h-64 flex items-center justify-center cursor-pointer hover:bg-gray-600 transition-colors duration-200" onclick="flipCard()">
+      <p id="cardText" class="text-2xl font-semibold text-white"></p>
+    </div>
+    <div class="flex justify-between mt-6 gap-4">
+      <button id="prevBtn" class="bg-indigo-600 text-white px-6 py-3 rounded-lg hover:bg-indigo-700 transition-colors duration-200" onclick="prevCard()">Previous</button>
+      <button id="nextBtn" class="bg-indigo-600 text-white px-6 py-3 rounded-lg hover:bg-indigo-700 transition-colors duration-200" onclick="nextCard()">Next</button>
+    </div>
+    <div class="mt-6">
+      <input id="questionInput" class="w-full p-3 bg-gray-700 text-white border border-gray-600 rounded-lg mb-3 focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Enter verb (hiragana)">
+      <input id="answerInput" class="w-full p-3 bg-gray-700 text-white border border-gray-600 rounded-lg mb-3 focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Enter English meaning">
+      <button id="addBtn" class="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition-colors duration-200 w-full" onclick="addCard()">Add Flashcard</button>
+    </div>
+  </div>
+
+  <script>
+    const flashcards = [
+      { question: "あびる", answer: "to bathe, to shower" },
+      { question: "あげる", answer: "to raise; to elevate; to give" },
+      { question: "あける", answer: "to open (a door, etc.); to unwrap (e.g. parcel, package); to unlock" },
+      { question: "あく", answer: "to open (e.g. doors, business, etc)" },
+      { question: "あらう", answer: "to wash" },
+      { question: "ある", answer: "to be, to have" },
+      { question: "あるく", answer: "to walk" },
+      { question: "あそぶ", answer: "to play; to enjoy oneself" },
+      { question: "あう", answer: "to meet; to encounter; to see" },
+      { question: "べんきょう", answer: "to study" },
+      { question: "ちがう", answer: "to differ" },
+      { question: "だす", answer: "to take out; to get out; to put out; to reveal" },
+      { question: "でかける", answer: "to go out; to leave; to depart" },
+      { question: "でんわ", answer: "telephone (call / device); phone call" },
+      { question: "でる", answer: "to leave; to exit; to appear; to go out" },
+      { question: "ふく", answer: "to blow (of the wind)" },
+      { question: "ふる", answer: "to fall" },
+      { question: "はいる", answer: "to enter; to go into" },
+      { question: "はじまる", answer: "to begin" },
+      { question: "はく", answer: "to wear, to put on trousers" },
+      { question: "はなす", answer: "to speak; to talk; to converse" },
+      { question: "はれる", answer: "to be sunny" },
+      { question: "はる", answer: "to stick; to paste" },
+      { question: "はしる", answer: "to run" },
+      { question: "はたらく", answer: "to work" },
+      { question: "ひく", answer: "to pull; to play" },
+      { question: "いく", answer: "to go; to move" },
+      { question: "いれる", answer: "to put in; to let in; to take in; to bring in; to insert; to install" },
+      { question: "いる", answer: "to be needed; to be, to have" },
+      { question: "いう", answer: "to say; to call" },
+      { question: "じゅぎょう", answer: "lesson; class work" },
+      { question: "かえる", answer: "to go back" },
+      { question: "かえす", answer: "to return something" },
+      { question: "かかる", answer: "to take (a resource, e.g. time or money)" },
+      { question: "かける", answer: "to hang up; to make (a call)" },
+      { question: "かく", answer: "to write; to compose; to pen; to draw" },
+      { question: "かりる", answer: "to borrow" },
+      { question: "かす", answer: "to lend; to loan" },
+      { question: "かう", answer: "to buy; to purchase" },
+      { question: "けっこん", answer: "marriage" },
+      { question: "けす", answer: "to erase, to turn off power" },
+      { question: "きえる", answer: "to disappear" },
+      { question: "きく", answer: "to hear; to listen (to music); to ask; to learn of" },
+      { question: "きる", answer: "to cut; to wear" },
+      { question: "こまる", answer: "to be troubled" },
+      { question: "こぴい", answer: "copy; photocopy" },
+      { question: "こたえる", answer: "to answer" },
+      { question: "くもる", answer: "to become cloudy, to become dim" },
+      { question: "くる", answer: "to come" },
+      { question: "まがる", answer: "to turn, to bend" },
+      { question: "まつ", answer: "to wait" },
+      { question: "みがく", answer: "to polish; to shine; to brush (e.g. teeth)" },
+      { question: "みる", answer: "to see; to look; to watch; to view; to observe" },
+      { question: "みせる", answer: "to show; to display" },
+      { question: "もつ", answer: "to hold" },
+      { question: "なく", answer: "animal noise; to chirp" },
+      { question: "なくす", answer: "to lose (something)" },
+      { question: "ならべる", answer: "to line up, to set up" },
+      { question: "ならぶ", answer: "to line up, to stand in a line" },
+      { question: "ならう", answer: "to be taught; to learn (from a teacher)" },
+      { question: "ねる", answer: "to sleep; to go to bed; to lie down" },
+      { question: "のぼる", answer: "to climb" },
+      { question: "のむ", answer: "to drink" },
+      { question: "のる", answer: "to get on (train, plane, bus, ship, etc.)" },
+      { question: "ぬぐ", answer: "to take off clothes" },
+      { question: "おぼえる", answer: "to remember" },
+      { question: "おきる", answer: "to get up; to wake up" },
+      { question: "おく", answer: "to put; to place" },
+      { question: "おりる", answer: "to get off" },
+      { question: "おしえる", answer: "to teach" },
+      { question: "おす", answer: "to push; to press" },
+      { question: "おわる", answer: "to finish; to end" },
+      { question: "およぐ", answer: "to swim" },
+      { question: "れんしゅう", answer: "practice; practicing" },
+      { question: "りょこう", answer: "travel; trip; journey; excursion; tour" },
+      { question: "りょうり", answer: "cuisine" },
+      { question: "さく", answer: "to bloom" },
+      { question: "さんぽ", answer: "walk; stroll" },
+      { question: "さす", answer: "to stretch out hands, to raise an umbrella" },
+      { question: "せんたく", answer: "washing; laundry" },
+      { question: "しごと", answer: "work; job; business" },
+      { question: "しまる", answer: "to close, to be closed" },
+      { question: "しめる", answer: "to close; to shut; to tie; to fasten; to tighten" },
+      { question: "しぬ", answer: "to die" },
+      { question: "しる", answer: "to know" },
+      { question: "しつもん", answer: "question; inquiry" },
+      { question: "そうじ", answer: "to clean, to sweep" },
+      { question: "すむ", answer: "to live in; to reside; to inhabit; to dwell; to abide" },
+      { question: "すう", answer: "to smoke, to suck" },
+      { question: "すわる", answer: "to sit" },
+      { question: "たべる", answer: "to eat" },
+      { question: "たのむ", answer: "to ask" },
+      { question: "たつ", answer: "to stand; to stand up" },
+      { question: "てすと", answer: "examination; quiz; test" },
+      { question: "とぶ", answer: "to fly; to hop" },
+      { question: "とまる", answer: "to stop; to come to a halt" }
+    ];
+    let currentCard = 0;
+    let isQuestion = true;
+
+    function displayCard() {
+      const cardText = document.getElementById('cardText');
+      if (flashcards.length === 0) {
+        cardText.textContent = "No flashcards available!";
+        return;
+      }
+      cardText.textContent = isQuestion ? flashcards[currentCard].question : flashcards[currentCard].answer;
+    }
+
+    function flipCard() {
+      if (flashcards.length === 0) return;
+      isQuestion = !isQuestion;
+      displayCard();
+    }
+
+    function nextCard() {
+      if (flashcards.length === 0) return;
+      currentCard = (currentCard + 1) % flashcards.length;
+      isQuestion = true;
+      displayCard();
+    }
+
+    function prevCard() {
+      if (flashcards.length === 0) return;
+      currentCard = (currentCard - 1 + flashcards.length) % flashcards.length;
+      isQuestion = true;
+      displayCard();
+    }
+
+    function addCard() {
+      const question = document.getElementById('questionInput').value.trim();
+      const answer = document.getElementById('answerInput').value.trim();
+      if (question && answer) {
+        flashcards.push({ question, answer });
+        document.getElementById('questionInput').value = '';
+        document.getElementById('answerInput').value = '';
+        if (flashcards.length === 1) {
+          currentCard = 0;
+          isQuestion = true;
+          displayCard();
+        }
+      }
+    }
+
+    // Initialize the first card
+    displayCard();
+  </script>
+</body>
+</html>

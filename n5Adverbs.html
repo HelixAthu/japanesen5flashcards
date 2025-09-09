@@ -1,0 +1,154 @@
+<script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function filledCell(cell) {
+          return cell !== '' && cell != null;
+        }
+        function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row => row.some(filledCell));
+
+                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
+                var headerRowIndex = filteredData.findIndex((row, index) =>
+                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+                );
+                // Fallback
+                if (headerRowIndex === -1 || headerRowIndex > 25) {
+                  headerRowIndex = 0;
+                }
+
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+        }
+        </script><!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>JLPT N5 Adverbs Flashcard App</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-900 flex items-center justify-center min-h-screen">
+  <div class="bg-gray-800 p-6 rounded-xl shadow-2xl w-full max-w-lg">
+    <h1 class="text-3xl font-bold text-center text-white mb-6">JLPT N5 Adverbs Flashcards</h1>
+    <div id="flashcard" class="bg-gray-700 p-6 rounded-lg text-center h-64 flex items-center justify-center cursor-pointer hover:bg-gray-600 transition-colors duration-200" onclick="flipCard()">
+      <p id="cardText" class="text-2xl font-semibold text-white"></p>
+    </div>
+    <div class="flex justify-between mt-6 gap-4">
+      <button id="prevBtn" class="bg-indigo-600 text-white px-6 py-3 rounded-lg hover:bg-indigo-700 transition-colors duration-200" onclick="prevCard()">Previous</button>
+      <button id="nextBtn" class="bg-indigo-600 text-white px-6 py-3 rounded-lg hover:bg-indigo-700 transition-colors duration-200" onclick="nextCard()">Next</button>
+    </div>
+    <div class="mt-6">
+      <input id="questionInput" class="w-full p-3 bg-gray-700 text-white border border-gray-600 rounded-lg mb-3 focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Enter adverb (hiragana)">
+      <input id="answerInput" class="w-full p-3 bg-gray-700 text-white border border-gray-600 rounded-lg mb-3 focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Enter English meaning">
+      <button id="addBtn" class="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition-colors duration-200 w-full" onclick="addCard()">Add Flashcard</button>
+    </div>
+  </div>
+
+  <script>
+    const flashcards = [
+      { question: "ちょっと", answer: "a little" },
+      { question: "ちょうど", answer: "exactly" },
+      { question: "だいじょうぶ", answer: "OK; okay; alright; problem free" },
+      { question: "だんだん", answer: "gradually" },
+      { question: "どう", answer: "how; in what way; how about" },
+      { question: "どうも", answer: "thank you; thanks" },
+      { question: "どうして", answer: "why; for what reason; how" },
+      { question: "どうぞ", answer: "please" },
+      { question: "はじめて", answer: "for the first time" },
+      { question: "ひとり", answer: "one person; alone; single" },
+      { question: "いちばん", answer: "number one; first; 1st, first place; best; most" },
+      { question: "いかが", answer: "how; in what way; how about" },
+      { question: "いくら", answer: "how much?; how many?" },
+      { question: "いくつ", answer: "how many?; how old?" },
+      { question: "いろいろ", answer: "various" },
+      { question: "いっしょに", answer: "together" },
+      { question: "いつも", answer: "always; usually; habitually" },
+      { question: "けっこう", answer: "splendid; enough" },
+      { question: "まだ", answer: "still; not yet" },
+      { question: "まだ～ていません", answer: "have not yet ~" },
+      { question: "まえに", answer: "before; in front of ~" },
+      { question: "まっすぐ", answer: "straight ahead; direct" },
+      { question: "みんな", answer: "all; everyone; everybody" },
+      { question: "もっと", answer: "more; longer; further" },
+      { question: "もう", answer: "already; anymore; again; other" },
+      { question: "なぜ", answer: "why; how" },
+      { question: "おなじ", answer: "same" },
+      { question: "すぐに", answer: "immediately; right away; instantly" },
+      { question: "すこし", answer: "a little (bit); small quantity; few; short distance" },
+      { question: "たぶん", answer: "perhaps; probably" },
+      { question: "たいへん", answer: "very; greatly; terribly; serious; difficult" },
+      { question: "ときどき", answer: "sometimes; at times" },
+      { question: "とても", answer: "very; awfully; exceedingly" },
+      { question: "よく", answer: "often; well" },
+      { question: "ゆっくり", answer: "slowly" }
+    ];
+    let currentCard = 0;
+    let isQuestion = true;
+
+    function displayCard() {
+      const cardText = document.getElementById('cardText');
+      if (flashcards.length === 0) {
+        cardText.textContent = "No flashcards available!";
+        return;
+      }
+      cardText.textContent = isQuestion ? flashcards[currentCard].question : flashcards[currentCard].answer;
+    }
+
+    function flipCard() {
+      if (flashcards.length === 0) return;
+      isQuestion = !isQuestion;
+      displayCard();
+    }
+
+    function nextCard() {
+      if (flashcards.length === 0) return;
+      currentCard = (currentCard + 1) % flashcards.length;
+      isQuestion = true;
+      displayCard();
+    }
+
+    function prevCard() {
+      if (flashcards.length === 0) return;
+      currentCard = (currentCard - 1 + flashcards.length) % flashcards.length;
+      isQuestion = true;
+      displayCard();
+    }
+
+    function addCard() {
+      const question = document.getElementById('questionInput').value.trim();
+      const answer = document.getElementById('answerInput').value.trim();
+      if (question && answer) {
+        flashcards.push({ question, answer });
+        document.getElementById('questionInput').value = '';
+        document.getElementById('answerInput').value = '';
+        if (flashcards.length === 1) {
+          currentCard = 0;
+          isQuestion = true;
+          displayCard();
+        }
+      }
+    }
+
+    // Initialize the first card
+    displayCard();
+  </script>
+</body>
+</html>

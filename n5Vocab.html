@@ -1,0 +1,217 @@
+<script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function filledCell(cell) {
+          return cell !== '' && cell != null;
+        }
+        function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row => row.some(filledCell));
+
+                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
+                var headerRowIndex = filteredData.findIndex((row, index) =>
+                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+                );
+                // Fallback
+                if (headerRowIndex === -1 || headerRowIndex > 25) {
+                  headerRowIndex = 0;
+                }
+
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+        }
+        </script><!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>JLPT N5 Vocabulary Flashcard App</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-900 flex items-center justify-center min-h-screen">
+  <div class="bg-gray-800 p-6 rounded-xl shadow-2xl w-full max-w-lg">
+    <h1 class="text-3xl font-bold text-center text-white mb-6">JLPT N5 Vocabulary Flashcards</h1>
+    <div id="flashcard" class="bg-gray-700 p-6 rounded-lg text-center h-64 flex items-center justify-center cursor-pointer hover:bg-gray-600 transition-colors duration-200" onclick="flipCard()">
+      <p id="cardText" class="text-2xl font-semibold text-white"></p>
+    </div>
+    <div class="flex justify-between mt-6 gap-4">
+      <button id="prevBtn" class="bg-indigo-600 text-white px-6 py-3 rounded-lg hover:bg-indigo-700 transition-colors duration-200" onclick="prevCard()">Previous</button>
+      <button id="nextBtn" class="bg-indigo-600 text-white px-6 py-3 rounded-lg hover:bg-indigo-700 transition-colors duration-200" onclick="nextCard()">Next</button>
+    </div>
+    <div class="mt-6">
+      <input id="questionInput" class="w-full p-3 bg-gray-700 text-white border border-gray-600 rounded-lg mb-3 focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Enter vocabulary (hiragana/katakana)">
+      <input id="answerInput" class="w-full p-3 bg-gray-700 text-white border border-gray-600 rounded-lg mb-3 focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Enter English meaning">
+      <button id="addBtn" class="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition-colors duration-200 w-full" onclick="addCard()">Add Flashcard</button>
+    </div>
+  </div>
+
+  <script>
+    const flashcards = [
+      { question: "あびる", answer: "to bathe, to shower" },
+      { question: "あぶない", answer: "dangerous" },
+      { question: "あっち", answer: "over there" },
+      { question: "あちら", answer: "there" },
+      { question: "あげる", answer: "to raise; to elevate; to give" },
+      { question: "あか", answer: "red; crimson; scarlet" },
+      { question: "あかい", answer: "red; crimson; scarlet" },
+      { question: "あかるい", answer: "bright; light" },
+      { question: "あける", answer: "to open (a door, etc.); to unwrap (e.g. parcel, package); to unlock" },
+      { question: "あき", answer: "autumn; fall" },
+      { question: "あく", answer: "to open (e.g. doors, business, etc)" },
+      { question: "あまい", answer: "sweet; sweet-tasting; sugary; naive; indulgent" },
+      { question: "あめ", answer: "rain" },
+      { question: "あめ", answer: "candy" },
+      { question: "あなた", answer: "you" },
+      { question: "あね", answer: "older sister; elder sister" },
+      { question: "あに", answer: "elder brother; older brother" },
+      { question: "あの", answer: "that" },
+      { question: "あお", answer: "blue; azure" },
+      { question: "あおい", answer: "blue; azure" },
+      { question: "アパート", answer: "apartment" },
+      { question: "あらう", answer: "to wash" },
+      { question: "あれ", answer: "that" },
+      { question: "ある", answer: "to be, to have" },
+      { question: "あるく", answer: "to walk" },
+      { question: "あさ", answer: "morning" },
+      { question: "あさごはん", answer: "breakfast" },
+      { question: "あさって", answer: "day after tomorrow" },
+      { question: "あし", answer: "foot; leg; paw; arm" },
+      { question: "あした", answer: "tomorrow" },
+      { question: "あそぶ", answer: "to play; to enjoy oneself" },
+      { question: "あそこ", answer: "over there" },
+      { question: "あたま", answer: "head" },
+      { question: "あたらしい", answer: "new; novel; fresh; recent; latest" },
+      { question: "あたたかい", answer: "warm" },
+      { question: "あと", answer: "behind; after; remainder; left; also" },
+      { question: "あつい", answer: "hot; sultry; thick" },
+      { question: "あう", answer: "to meet; to encounter; to see" },
+      { question: "ばんごはん", answer: "dinner; evening meal" },
+      { question: "ばんごう", answer: "number" },
+      { question: "バス", answer: "bus" },
+      { question: "バター", answer: "butter" },
+      { question: "ベッド", answer: "bed" },
+      { question: "べんきょう", answer: "to study" },
+      { question: "べんり", answer: "convenient; handy; useful" },
+      { question: "ボールペン", answer: "ball-point pen" },
+      { question: "ボタン", answer: "button" },
+      { question: "ぼうし", answer: "hat; cap" },
+      { question: "ぶんしょう", answer: "sentence" },
+      { question: "ぶたにく", answer: "pork" },
+      { question: "びょういん", answer: "hospital" },
+      { question: "びょうき", answer: "illness; disease; sickness" },
+      { question: "ちゃいろ", answer: "brown" },
+      { question: "ちゃわん", answer: "rice bowl; tea cup; teacup" },
+      { question: "ちち", answer: "father" },
+      { question: "ちがう", answer: "to differ" },
+      { question: "ちいさい", answer: "small; little; tiny" },
+      { question: "ちいさな", answer: "small; little; tiny" },
+      { question: "ちかい", answer: "near; close" },
+      { question: "ちかてつ", answer: "subway; underground train" },
+      { question: "ちず", answer: "map" },
+      { question: "ちょっと", answer: "a little" },
+      { question: "ちょうど", answer: "exactly" },
+      { question: "だいどころ", answer: "kitchen" },
+      { question: "だいがく", answer: "university; college" },
+      { question: "だいじょうぶ", answer: "OK; okay; alright; problem free" },
+      { question: "だいすき", answer: "love; like; like very much" },
+      { question: "だんだん", answer: "gradually" },
+      { question: "だれ", answer: "who" },
+      { question: "だれか", answer: "someone; somebody" },
+      { question: "だす", answer: "to take out; to get out; to put out; to reveal" },
+      { question: "でぐち", answer: "exit; gateway; way out" },
+      { question: "でかける", answer: "to go out; to leave; to depart" },
+      { question: "でんき", answer: "electricity" },
+      { question: "でんしゃ", answer: "train; electric train" },
+      { question: "でんわ", answer: "telephone (call / device); phone call" },
+      { question: "デパート", answer: "department store" },
+      { question: "でる", answer: "to leave; to exit; to appear; to go out" },
+      { question: "ドア", answer: "door" },
+      { question: "どっち", answer: "which; which one" },
+      { question: "どちら", answer: "which of two" },
+      { question: "どこ", answer: "where; what place" },
+      { question: "どなた", answer: "who" },
+      { question: "どの", answer: "which" },
+      { question: "どれ", answer: "which (of three or more)" },
+      { question: "どう", answer: "how; in what way; how about" },
+      { question: "どうぶつ", answer: "animal" },
+      { question: "どうも", answer: "thank you; thanks" },
+      { question: "どうぞ", answer: "please" },
+      { question: "どようび", answer: "Saturday" },
+      { question: "え", answer: "picture" },
+      { question: "ええ", answer: "yes; that is correct; right" },
+      { question: "えいが", answer: "movie; film" },
+      { question: "えいがかん", answer: "movie theater; cinema" },
+      { question: "えいご", answer: "English language" },
+      { question: "えき", answer: "station" },
+      { question: "えんぴつ", answer: "pencil" },
+      { question: "エレベーター", answer: "elevator" }
+    ];
+    let currentCard = 0;
+    let isQuestion = true;
+
+    function displayCard() {
+      const cardText = document.getElementById('cardText');
+      if (flashcards.length === 0) {
+        cardText.textContent = "No flashcards available!";
+        return;
+      }
+      cardText.textContent = isQuestion ? flashcards[currentCard].question : flashcards[currentCard].answer;
+    }
+
+    function flipCard() {
+      if (flashcards.length === 0) return;
+      isQuestion = !isQuestion;
+      displayCard();
+    }
+
+    function nextCard() {
+      if (flashcards.length === 0) return;
+      currentCard = (currentCard + 1) % flashcards.length;
+      isQuestion = true;
+      displayCard();
+    }
+
+    function prevCard() {
+      if (flashcards.length === 0) return;
+      currentCard = (currentCard - 1 + flashcards.length) % flashcards.length;
+      isQuestion = true;
+      displayCard();
+    }
+
+    function addCard() {
+      const question = document.getElementById('questionInput').value.trim();
+      const answer = document.getElementById('answerInput').value.trim();
+      if (question && answer) {
+        flashcards.push({ question, answer });
+        document.getElementById('questionInput').value = '';
+        document.getElementById('answerInput').value = '';
+        if (flashcards.length === 1) {
+          currentCard = 0;
+          isQuestion = true;
+          displayCard();
+        }
+      }
+    }
+
+    // Initialize the first card
+    displayCard();
+  </script>
+</body>
+</html>

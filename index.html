@@ -1,0 +1,204 @@
+<script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function filledCell(cell) {
+          return cell !== '' && cell != null;
+        }
+        function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row => row.some(filledCell));
+
+                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
+                var headerRowIndex = filteredData.findIndex((row, index) =>
+                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+                );
+                // Fallback
+                if (headerRowIndex === -1 || headerRowIndex > 25) {
+                  headerRowIndex = 0;
+                }
+
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+        }
+        </script><!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>JLPT N5 Flashcards</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    /* Ensure iframe takes full viewport */
+    iframe {
+      border: none;
+      width: 100vw;
+      height: 100vh;
+      display: block;
+      position: fixed;
+      top: 0;
+      left: 0;
+      z-index: 10;
+    }
+    /* Sidebar styling */
+    .sidebar {
+      transform: translateX(-100%);
+      transition: transform 0.3s ease-in-out;
+      z-index: 30;
+    }
+    .sidebar.open {
+      transform: translateX(0);
+    }
+    /* Overlay styling */
+    .overlay {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(0, 0, 0, 0.5); /* Translucent black */
+      z-index: 20;
+    }
+    .overlay.open {
+      display: block;
+    }
+    /* Hamburger button */
+    .hamburger {
+      z-index: 40;
+    }
+    .hamburger.hidden {
+      display: none;
+    }
+    /* Navigation buttons */
+    .nav-button {
+      transition: background-color 0.3s ease;
+    }
+    .nav-button.active {
+      background-color: #3b82f6; /* Blue highlight for active button */
+    }
+  </style>
+</head>
+<body class="bg-gray-900 text-white">
+  <!-- Hamburger Button -->
+  <button class="hamburger fixed top-4 left-4 p-2 bg-gray-800 rounded hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500" 
+          onclick="toggleMenu()" 
+          aria-label="Toggle menu"
+          aria-expanded="false"
+          aria-controls="sidebar">
+    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7"></path>
+    </svg>
+  </button>
+
+  <!-- Sidebar Menu -->
+  <nav id="sidebar" class="sidebar fixed top-0 left-0 w-64 h-full bg-gray-800 p-4 flex flex-col">
+    <h1 class="text-2xl font-bold mb-6 pt-12">JLPT N5 Flashcards</h1>
+    <ul class="flex flex-col gap-4" role="tablist">
+      <li>
+        <button class="nav-button w-full px-4 py-2 bg-gray-600 rounded hover:bg-gray-500 active text-left" 
+                onclick="switchIframe('n5Adverbs.html')" 
+                aria-label="Switch to Adverbs Flashcards"
+                data-target="n5Adverbs.html">Adverbs</button>
+      </li>
+      <li>
+        <button class="nav-button w-full px-4 py-2 bg-gray-600 rounded hover:bg-gray-500 text-left" 
+                onclick="switchIframe('n5Verbs.html')" 
+                aria-label="Switch to Verbs Flashcards"
+                data-target="n5Verbs.html">Verbs</button>
+      </li>
+      <li>
+        <button class="nav-button w-full px-4 py-2 bg-gray-600 rounded hover:bg-gray-500 text-left" 
+                onclick="switchIframe('n5Grammar.html')" 
+                aria-label="Switch to Grammar Flashcards"
+                data-target="n5Grammar.html">Grammar</button>
+      </li>
+      <li>
+        <button class="nav-button w-full px-4 py-2 bg-gray-600 rounded hover:bg-gray-500 text-left" 
+                onclick="switchIframe('n5Vocab.html')" 
+                aria-label="Switch to Vocabulary Flashcards"
+                data-target="n5Vocab.html">Vocabulary</button>
+      </li>
+      <li>
+        <button class="nav-button w-full px-4 py-2 bg-gray-600 rounded hover:bg-gray-500 text-left" 
+                onclick="switchIframe('n5Adjectives.html')" 
+                aria-label="Switch to Adjectives Flashcards"
+                data-target="n5Adjectives.html">Adjectives</button>
+      </li>
+    </ul>
+    <footer class="mt-auto text-sm text-gray-400">© Built by HelixAthu [Github username]. All rights reserved.</footer>
+    <div class="text-xs text-gray-500 mt-2">Flashcard content credits to <a href="https://jlptsensei.com" target="_blank" class="underline hover:text-gray-300">jlptsensei.com</a></div>
+  </nav>
+
+  <!-- Overlay -->
+  <div id="overlay" class="overlay" onclick="toggleMenu()"></div>
+
+  <!-- Iframe -->
+  <iframe id="flashcardIframe" src="n5Adverbs.html" title="JLPT N5 Flashcards Content"></iframe>
+
+  <script>
+    // Toggle sidebar and overlay
+    function toggleMenu() {
+      const sidebar = document.getElementById('sidebar');
+      const overlay = document.getElementById('overlay');
+      const hamburger = document.querySelector('.hamburger');
+      const isOpen = sidebar.classList.contains('open');
+
+      sidebar.classList.toggle('open');
+      overlay.classList.toggle('open');
+      hamburger.classList.toggle('hidden');
+      hamburger.setAttribute('aria-expanded', !isOpen);
+    }
+
+    // Switch iframe content and update active button
+    function switchIframe(page) {
+      const iframe = document.getElementById('flashcardIframe');
+      iframe.src = page;
+
+      // Update active button styling
+      const buttons = document.querySelectorAll('.nav-button');
+      buttons.forEach(button => {
+        if (button.getAttribute('data-target') === page) {
+          button.classList.add('active');
+        } else {
+          button.classList.remove('active');
+        }
+      });
+
+      // Close menu after selection
+      toggleMenu();
+    }
+
+    // Ensure iframe resizes properly on load
+    document.getElementById('flashcardIframe').addEventListener('load', () => {
+      const iframe = document.getElementById('flashcardIframe');
+      iframe.contentWindow.document.body.style.margin = '0';
+      iframe.contentWindow.document.body.style.overflow = 'hidden';
+    });
+
+    // Close menu when clicking on iframe
+    document.getElementById('flashcardIframe').addEventListener('click', () => {
+      const sidebar = document.getElementById('sidebar');
+      if (sidebar.classList.contains('open')) {
+        toggleMenu();
+      }
+    });
+  </script>
+</body>
+</html>

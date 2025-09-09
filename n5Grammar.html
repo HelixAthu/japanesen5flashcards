@@ -1,0 +1,159 @@
+<script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function filledCell(cell) {
+          return cell !== '' && cell != null;
+        }
+        function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row => row.some(filledCell));
+
+                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
+                var headerRowIndex = filteredData.findIndex((row, index) =>
+                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+                );
+                // Fallback
+                if (headerRowIndex === -1 || headerRowIndex > 25) {
+                  headerRowIndex = 0;
+                }
+
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+        }
+        </script><!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>JLPT N5 Grammar Flashcard App</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-900 flex items-center justify-center min-h-screen">
+  <div class="bg-gray-800 p-6 rounded-xl shadow-2xl w-full max-w-lg">
+    <h1 class="text-3xl font-bold text-center text-white mb-6">JLPT N5 Grammar Flashcards</h1>
+    <div id="flashcard" class="bg-gray-700 p-6 rounded-lg text-center h-64 flex items-center justify-center cursor-pointer hover:bg-gray-600 transition-colors duration-200" onclick="flipCard()">
+      <p id="cardText" class="text-2xl font-semibold text-white"></p>
+    </div>
+    <div class="flex justify-between mt-6 gap-4">
+      <button id="prevBtn" class="bg-indigo-600 text-white px-6 py-3 rounded-lg hover:bg-indigo-700 transition-colors duration-200" onclick="prevCard()">Previous</button>
+      <button id="nextBtn" class="bg-indigo-600 text-white px-6 py-3 rounded-lg hover:bg-indigo-700 transition-colors duration-200" onclick="nextCard()">Next</button>
+    </div>
+    <div class="mt-6">
+      <input id="questionInput" class="w-full p-3 bg-gray-700 text-white border border-gray-600 rounded-lg mb-3 focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Enter grammar point (romaji)">
+      <input id="answerInput" class="w-full p-3 bg-gray-700 text-white border border-gray-600 rounded-lg mb-3 focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Enter English meaning">
+      <button id="addBtn" class="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition-colors duration-200 w-full" onclick="addCard()">Add Flashcard</button>
+    </div>
+  </div>
+
+  <script>
+    const flashcards = [
+      { question: "cha ikenai / ja ikenai", answer: "must not do (spoken Japanese)" },
+      { question: "da / desu", answer: "to be (am, is, are, were, used to)" },
+      { question: "dake", answer: "only; just; as much as ~" },
+      { question: "darou", answer: "I think; it seems; probably; right?" },
+      { question: "de", answer: "in; at; on; by; with; via ~" },
+      { question: "demo", answer: "but; however; though ~" },
+      { question: "deshou", answer: "I think; it seems; probably; right?" },
+      { question: "donna", answer: "what kind of; what sort of" },
+      { question: "doushite", answer: "why; for what reason; how" },
+      { question: "douyatte", answer: "how; in what way; by what means" },
+      { question: "ga", answer: "subject marker; however; but ~" },
+      { question: "ga arimasu", answer: "there is; is (non-living things)" },
+      { question: "ga hoshii", answer: "to want something" },
+      { question: "ga imasu", answer: "there is; to be; is (living things)" },
+      { question: "hou ga ii", answer: "had better; it'd be better to; should ~" },
+      { question: "i-adjectives", answer: "i-adjectives" },
+      { question: "ichiban", answer: "the most; the best" },
+      { question: "issho ni", answer: "together" },
+      { question: "itsumo", answer: "always; usually; habitually" },
+      { question: "janai / dewa nai", answer: "to not be (am not; is not; are not)" },
+      { question: "ka", answer: "question particle" },
+      { question: "ka~ka", answer: "or" },
+      { question: "kara", answer: "because; since; from" },
+      { question: "kata", answer: "the way of doing something; how to do ~" },
+      { question: "kedo", answer: "but; however; although ~" },
+      { question: "keredo mo", answer: "but; however; although ~" },
+      { question: "mada", answer: "still; not yet" },
+      { question: "mada ~te imasen", answer: "have not yet ~" },
+      { question: "made", answer: "until; as far as; to (an extent); even ~" },
+      { question: "mae ni", answer: "before; in front of ~" },
+      { question: "masen ka", answer: "would you; do you want to; shall we ~" },
+      { question: "mashou", answer: "let's ~; shall we ~" },
+      { question: "mashouka", answer: "shall I ~; used to offer help to the listener" },
+      { question: "mo", answer: "too; also; as well" },
+      { question: "mou", answer: "already; anymore; again; other" },
+      { question: "na-adjectives", answer: "na-adjectives" },
+      { question: "naa", answer: "sentence ending particle; confirmation; admiration, etc" },
+      { question: "naide", answer: "without doing ~; to do [B] without doing [A]" },
+      { question: "naide kudasai", answer: "please don't do ~" },
+      { question: "naito ikenai", answer: "must do; have an obligation to do ~" }
+    ];
+    let currentCard = 0;
+    let isQuestion = true;
+
+    function displayCard() {
+      const cardText = document.getElementById('cardText');
+      if (flashcards.length === 0) {
+        cardText.textContent = "No flashcards available!";
+        return;
+      }
+      cardText.textContent = isQuestion ? flashcards[currentCard].question : flashcards[currentCard].answer;
+    }
+
+    function flipCard() {
+      if (flashcards.length === 0) return;
+      isQuestion = !isQuestion;
+      displayCard();
+    }
+
+    function nextCard() {
+      if (flashcards.length === 0) return;
+      currentCard = (currentCard + 1) % flashcards.length;
+      isQuestion = true;
+      displayCard();
+    }
+
+    function prevCard() {
+      if (flashcards.length === 0) return;
+      currentCard = (currentCard - 1 + flashcards.length) % flashcards.length;
+      isQuestion = true;
+      displayCard();
+    }
+
+    function addCard() {
+      const question = document.getElementById('questionInput').value.trim();
+      const answer = document.getElementById('answerInput').value.trim();
+      if (question && answer) {
+        flashcards.push({ question, answer });
+        document.getElementById('questionInput').value = '';
+        document.getElementById('answerInput').value = '';
+        if (flashcards.length === 1) {
+          currentCard = 0;
+          isQuestion = true;
+          displayCard();
+        }
+      }
+    }
+
+    // Initialize the first card
+    displayCard();
+  </script>
+</body>
+</html>
